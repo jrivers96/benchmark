@@ -75,9 +75,11 @@ private:
     size_t _numInstances;
     bool _perAttributeSet;
     bool _perAttribute;
+    bool _perInstanceSet;
+    bool _perInstance;
 
 public:
-    static const size_t MAX_PARAMETERS = 2;
+    static const size_t MAX_PARAMETERS = 3;
     Settings(ArrayDesc const& inputSchema,
              vector< shared_ptr<OperatorParam> > const& operatorParameters,
              bool logical,
@@ -85,9 +87,12 @@ public:
         _numInputAttributes(inputSchema.getAttributes().size()),
         _numInstances(query->getInstancesCount()),
         _perAttributeSet(false),
-        _perAttribute(false)
+        _perAttribute(false),
+        _perInstanceSet(false),
+        _perInstance(false)
     {
         string const perAttributeParamHeader              = "per_attribute=";
+        string const perInstanceParamHeader              = "per_instance=";
         size_t const nParams = operatorParameters.size();
          if (nParams > MAX_PARAMETERS)
          {   //assert-like exception. Caller should have taken care of this!
@@ -144,6 +149,7 @@ private:
     void parseStringParam(string const& param)
     {
         if(checkBoolParam (param,   "per_attribute",       _perAttribute,          _perAttributeSet       ) ) { return; }
+        if(checkBoolParam (param,   "per_instance",       _perInstance,          _perInstanceSet       ) ) { return; }
         ostringstream error;
         error<<"unrecognized parameter "<<param;
         throw SYSTEM_EXCEPTION(SCIDB_SE_INTERNAL, SCIDB_LE_ILLEGAL_OPERATION) << error.str().c_str();
@@ -157,7 +163,7 @@ public:
         vector<AttributeDesc> attributes;
         attributes.push_back(AttributeDesc((AttributeID) 0, "att",    TID_STRING, AttributeDesc::IS_NULLABLE, 0));
         attributes.push_back(AttributeDesc((AttributeID) 1, "read_bytes", TID_UINT64, AttributeDesc::IS_NULLABLE, 0));
-        attributes.push_back(AttributeDesc((AttributeID) 2, "total_seconds", TID_UINT64, AttributeDesc::IS_NULLABLE, 0));
+        attributes.push_back(AttributeDesc((AttributeID) 2, "total_seconds", TID_DOUBLE, AttributeDesc::IS_NULLABLE, 0));
         attributes.push_back(AttributeDesc((AttributeID) 3, "bytes_per_second",  TID_DOUBLE, AttributeDesc::IS_NULLABLE, 0));
         attributes = addEmptyTagAttribute(attributes);
         return ArrayDesc("pull", attributes, dimensions, defaultPartitioning(), query->getDefaultArrayResidency());
@@ -172,6 +178,10 @@ public:
     bool perAttributeflag() const
     {
         return _perAttribute;
+    }
+    bool perInstanceflag() const
+    {
+        return _perInstance;
     }
 
 };
@@ -191,8 +201,8 @@ private:
 public:
 	string attName;
     ssize_t readBytes;
-    ssize_t totalSeconds;
-    ssize_t bytesPerSecond;
+    double totalSeconds;
+    double bytesPerSecond;
 
     SummaryTuple(string att = ""):
         attName(att),
@@ -218,7 +228,7 @@ struct InstanceSummary
         }
     }
 
-    void addChunkData(AttributeID attId, ssize_t attBytes, ssize_t attSeconds)
+    void addChunkData(AttributeID attId, ssize_t attBytes, double attSeconds)
     {
         SummaryTuple& tuple = summaryData[attId];
         tuple.readBytes+=attBytes;
@@ -228,14 +238,14 @@ struct InstanceSummary
     bool makeFinalSummary(Settings const&settings, ArrayDesc const& schema, shared_ptr<Query>& query)
     {
         size_t numAtt = Settings::NUM_OUTPUT_ATTRIBUTES;
-        InstanceID const myId    = query->getInstanceID();
-        InstanceID const coordId = query->getCoordinatorID() == INVALID_INSTANCE ? myId : query->getCoordinatorID();
+        InstanceID const myId     = query->getInstanceID();
+        InstanceID const coordId  = query->getCoordinatorID() == INVALID_INSTANCE ? myId : query->getCoordinatorID();
         size_t const numInstances = query->getInstancesCount();
         //bool const perAtt = settings.perAttributeflag();
         //bool const perIns = settings.perInstanceflag();
         bool const perAtt = settings.perAttributeflag();
-        bool const perIns = false;
-        if(perAtt==false)
+        bool const perIns = settings.perAttributeflag();;
+        if(perAtt==false && perIns==false)
         {
             if(myId != coordId)
             {
@@ -260,7 +270,6 @@ struct InstanceSummary
                     /*if(att==0)
                     {
                         globalSummary.totalCount += t.totalCount;
-
                     }
                     */
                     globalSummary.totalSeconds += t.totalSeconds;
@@ -296,7 +305,7 @@ struct InstanceSummary
                 summaryData.push_back(globalSummary);
             }
         }
-        else if(perAtt)
+        else if(perAtt && !perIns)
         {
             if(myId != coordId)
             {
@@ -335,9 +344,36 @@ struct InstanceSummary
                         summaryData[att].attName = newlist[att].attName;
                         summaryData[att].totalSeconds += newlist[att].totalSeconds;
                         summaryData[att].readBytes += newlist[att].readBytes;
+                        //LOG4CXX_DEBUG(logger, std::setprecision(4) << "readbytes foo3:" << summaryData[att].readBytes);
                     }
                 }
             }
+        }
+        else if (perIns && !perAtt) {
+            std::vector<SummaryTuple>::size_type sz = summaryData.size();
+            SummaryTuple instanceSummary("all");
+            for (unsigned att = 0; att < sz; att++) {
+                /*if(att == 0)
+                 {
+                 instanceSummary.totalCount = summaryData[att].totalCount;
+                 if(instanceSummary.maxChunkCount < summaryData[att].maxChunkCount)
+                 {
+                 instanceSummary.maxChunkCount = summaryData[att].maxChunkCount;
+                 }
+                 if(instanceSummary.minChunkCount > summaryData[att].minChunkCount)
+                 {
+                 instanceSummary.minChunkCount = summaryData[att].minChunkCount;
+                 }
+                 }
+                 */
+                //instanceSummary.numChunks += summaryData[att].numChunks;
+                //instanceSummary.totalBytes += summaryData[att].totalBytes;
+                //instanceSummary[att].attName       = summaryData[att].attName;
+                instanceSummary.totalSeconds += summaryData[att].totalSeconds;
+                instanceSummary.readBytes += summaryData[att].readBytes;
+            }
+            summaryData.clear();
+            summaryData.push_back(instanceSummary);
         }
                 return true;
     }
@@ -368,16 +404,22 @@ struct InstanceSummary
         for(size_t i=0; i<summaryData.size(); ++i)
         {
             SummaryTuple const& t = summaryData[i];
+            LOG4CXX_DEBUG(logger, std::setprecision(4) << "write array read bytes foo4:" << t.readBytes);
+            LOG4CXX_DEBUG(logger, std::setprecision(4) << "write array seconds foo4:"    << t.totalSeconds);
+
             buf.setString(t.attName);
             ociters[0]->setPosition(position);
             ociters[0]->writeItem(buf);
-            buf.reset<uint64_t>(t.totalSeconds);
+
+            buf.reset<uint64_t>((uint64_t)t.readBytes);
             ociters[1]->setPosition(position);
             ociters[1]->writeItem(buf);
-            buf.setUint64(t.readBytes);
+
+            buf.reset<double>((double)t.totalSeconds);
             ociters[2]->setPosition(position);
             ociters[2]->writeItem(buf);
-            buf.setDouble((double)t.readBytes/(double)t.totalSeconds);
+
+            buf.setDouble(((double)t.readBytes)/((double)t.totalSeconds/1000.0));
             ociters[3]->setPosition(position);
             ociters[3]->writeItem(buf);
             position[1]++;

@@ -35,6 +35,28 @@
 #include "PullSettings.h"
 #include "MemChunkBuilder.h"
 
+#include <query/TypeSystem.h>
+#include <query/FunctionDescription.h>
+#include <query/FunctionLibrary.h>
+#include <query/Operator.h>
+#include <query/TypeSystem.h>
+#include <query/FunctionLibrary.h>
+#include <query/Operator.h>
+#include <array/DBArray.h>
+#include <array/Tile.h>
+#include <array/TileIteratorAdaptors.h>
+
+//#include <array/PinBuffer.h>
+
+
+#include <util/Network.h>
+#include <query/Operator.h>
+#include <util/Platform.h>
+#include <array/Tile.h>
+
+#include <system/Sysinfo.h>
+#include <util/Network.h>
+
 #include <iostream>
 #include <iomanip>
 #include <chrono>
@@ -48,6 +70,18 @@ namespace scidb
 {
 
 using namespace scidb;
+
+static size_t getChunkOverheadSize()
+{
+    return             (  sizeof(ConstRLEPayload::Header) +
+                                 2 * sizeof(ConstRLEPayload::Segment) +
+                                 sizeof(varpart_offset_t) + 5);
+}
+
+static size_t getSizeOffset()
+{
+    return getChunkOverheadSize()-4;
+}
 
 class PhysicalPull : public PhysicalOperator
 {
@@ -85,35 +119,48 @@ std::shared_ptr< Array> execute(std::vector< std::shared_ptr< Array> >& inputArr
         attNames[i] = inputSchema.getAttributes()[i].getName();
         iaiters[i] = inputArray->getConstIterator(i);
     }
-    std::clock_t c_start = std::clock();
-    auto t_start = std::chrono::high_resolution_clock::now();
+
     pull::InstanceSummary summary(query->getInstanceID(), numInputAtts, attNames);
-    size_t bytesWritten = 0;
+
     for(AttributeID i=0; i<numInputAtts; ++i)
     {
+        size_t bytesWritten = 0;
+        std::clock_t c_start = std::clock();
+        auto t_start = std::chrono::high_resolution_clock::now();
         while(!iaiters[i]->end())
         {
             //ConstChunk const& chunk = iaiters[i]->getChunk();
             iciters[i] = iaiters[i]->getChunk().getConstIterator(ConstChunkIterator::IGNORE_OVERLAPS | ConstChunkIterator::IGNORE_EMPTY_CELLS);
             ConstChunk const& ch = iciters[i]->getChunk();
-            uint32_t* sizePointer = (uint32_t*) (((char*)ch.getData()) + MemChunkBuilder::chunkSizeOffset());
-            bytesWritten += *sizePointer;
-
+            PinBuffer pinScope(ch);
+            uint32_t sourceSize = ch.getSize();
+            //uint32_t* sizePointer = (uint32_t*) (((char*)ch.getData()) + MemChunkBuilder::chunkSizeOffset());
+            //uint32_t const sourceSize = *((uint32_t*)(((char*) ch.getData()) + getSizeOffset()));
+            bytesWritten += sourceSize;
             //char source[] = "once upon a midnight dreary...", dest[4];
             //std::memcpy(dest, source, sizeof dest);
             //summary.addChunkData(i, chunk.getSize(), chunk.count());
             ++(*iaiters[i]);
-        }
-    }
-    summary.addChunkData(0, bytesWritten, numInputAtts );
-    std::clock_t c_end = std::clock();
-    auto t_end = std::chrono::high_resolution_clock::now();
+            //LOG4CXX_DEBUG(logger, std::setprecision(2) << "bytes written:" << bytesWritten);
 
-    std::cout << std::fixed << std::setprecision(2) << "CPU time used: "
-              << 1000.0 * (c_end-c_start) / CLOCKS_PER_SEC << " ms\n"
-              << "Wall clock time passed: "
-              << std::chrono::duration<double, std::milli>(t_end-t_start).count()
-              << " ms\n";
+        }
+        std::clock_t c_end = std::clock();
+        double elapsed = 1000.0 *(c_end-c_start) / CLOCKS_PER_SEC;
+        auto t_end = std::chrono::high_resolution_clock::now();
+        double highres = std::chrono::duration<double, std::milli>(t_end-t_start).count();
+        LOG4CXX_DEBUG(logger, std::setprecision(4) << "time foo1:" << elapsed);
+        LOG4CXX_DEBUG(logger, std::setprecision(4) << "time foo2:" << highres);
+
+        summary.addChunkData(i, bytesWritten, elapsed );
+
+        /*std::cout << std::fixed << std::setprecision(2) << "CPU time used: "
+                   << 1000.0 * (c_end-c_start) / CLOCKS_PER_SEC << " ms\n"
+                   << "Wall clock time passed: "
+                   << std::chrono::duration<double, std::milli>(t_end-t_start).count()
+                   << " ms\n";
+        */
+    }
+
 
     summary.makeFinalSummary(settings, _schema, query);
     return summary.toArray(settings, _schema, query);
