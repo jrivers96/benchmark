@@ -136,9 +136,12 @@ std::shared_ptr< Array> execute(std::vector< std::shared_ptr< Array> >& inputArr
             uint32_t sourceSize = ch.getSize();
             //uint32_t* sizePointer = (uint32_t*) (((char*)ch.getData()) + MemChunkBuilder::chunkSizeOffset());
             //uint32_t const sourceSize = *((uint32_t*)(((char*) ch.getData()) + getSizeOffset()));
+            /*
+            char *source = ch.getConstData();
             bytesWritten += sourceSize;
-            //char source[] = "once upon a midnight dreary...", dest[4];
-            //std::memcpy(dest, source, sizeof dest);
+            char *dest;
+            std::memcpy(dest, source, sizeof dest);
+            */
             //summary.addChunkData(i, chunk.getSize(), chunk.count());
             ++(*iaiters[i]);
             //LOG4CXX_DEBUG(logger, std::setprecision(2) << "bytes written:" << bytesWritten);
