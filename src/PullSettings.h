@@ -241,10 +241,8 @@ struct InstanceSummary
         InstanceID const myId     = query->getInstanceID();
         InstanceID const coordId  = query->getCoordinatorID() == INVALID_INSTANCE ? myId : query->getCoordinatorID();
         size_t const numInstances = query->getInstancesCount();
-        //bool const perAtt = settings.perAttributeflag();
-        //bool const perIns = settings.perInstanceflag();
         bool const perAtt = settings.perAttributeflag();
-        bool const perIns = settings.perAttributeflag();;
+        bool const perIns = settings.perInstanceflag();
         if(perAtt==false && perIns==false)
         {
             if(myId != coordId)
