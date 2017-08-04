@@ -153,7 +153,7 @@ std::shared_ptr< Array> execute(std::vector< std::shared_ptr< Array> >& inputArr
             double highres = std::chrono::duration<double, std::nano>(t_end-t_start).count();
             //LOG4CXX_DEBUG(logger, std::setprecision(4) << "time foo1:" << elapsed);
             //LOG4CXX_DEBUG(logger, std::setprecision(4) << "time foo2:" << highres);
-            summary.addChunkData(i, bytesWritten, highres/1.0e9 );
+            summary.addChunkData(i, sourceSize, highres/1.0e9 );
         }
 
 
