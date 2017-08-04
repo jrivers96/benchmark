@@ -155,7 +155,7 @@ std::shared_ptr< Array> execute(std::vector< std::shared_ptr< Array> >& inputArr
             //LOG4CXX_DEBUG(logger, std::setprecision(4) << "time foo2:" << highres);
             summary.addChunkData(i, bytesWritten, highres/1.0e9 );
         }
-summary->
+
 
         /*std::cout << std::fixed << std::setprecision(2) << "CPU time used: "
                    << 1000.0 * (c_end-c_start) / CLOCKS_PER_SEC << " ms\n"
