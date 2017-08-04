@@ -125,10 +125,11 @@ std::shared_ptr< Array> execute(std::vector< std::shared_ptr< Array> >& inputArr
     for(AttributeID i=0; i<numInputAtts; ++i)
     {
         size_t bytesWritten = 0;
-        std::clock_t c_start = std::clock();
-        auto t_start = std::chrono::high_resolution_clock::now();
+        //std::clock_t c_start = std::clock();
+
         while(!iaiters[i]->end())
         {
+            auto t_start = std::chrono::high_resolution_clock::now();
             //ConstChunk const& chunk = iaiters[i]->getChunk();
             iciters[i] = iaiters[i]->getChunk().getConstIterator(ConstChunkIterator::IGNORE_OVERLAPS | ConstChunkIterator::IGNORE_EMPTY_CELLS);
             ConstChunk const& ch = iciters[i]->getChunk();
@@ -146,16 +147,15 @@ std::shared_ptr< Array> execute(std::vector< std::shared_ptr< Array> >& inputArr
             //summary.addChunkData(i, chunk.getSize(), chunk.count());
             ++(*iaiters[i]);
             //LOG4CXX_DEBUG(logger, std::setprecision(2) << "bytes written:" << bytesWritten);
-
+            //std::clock_t c_end = std::clock();
+            //double elapsed = 1000.0 *(c_end-c_start) / CLOCKS_PER_SEC;
+            auto t_end = std::chrono::high_resolution_clock::now();
+            double highres = std::chrono::duration<double, std::nano>(t_end-t_start).count();
+            //LOG4CXX_DEBUG(logger, std::setprecision(4) << "time foo1:" << elapsed);
+            //LOG4CXX_DEBUG(logger, std::setprecision(4) << "time foo2:" << highres);
+            summary.addChunkData(i, bytesWritten, highres );
         }
-        std::clock_t c_end = std::clock();
-        double elapsed = 1000.0 *(c_end-c_start) / CLOCKS_PER_SEC;
-        auto t_end = std::chrono::high_resolution_clock::now();
-        double highres = std::chrono::duration<double, std::milli>(t_end-t_start).count();
-        LOG4CXX_DEBUG(logger, std::setprecision(4) << "time foo1:" << elapsed);
-        LOG4CXX_DEBUG(logger, std::setprecision(4) << "time foo2:" << highres);
 
-        summary.addChunkData(i, bytesWritten, elapsed );
 
         /*std::cout << std::fixed << std::setprecision(2) << "CPU time used: "
                    << 1000.0 * (c_end-c_start) / CLOCKS_PER_SEC << " ms\n"

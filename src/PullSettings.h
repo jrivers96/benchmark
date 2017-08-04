@@ -92,7 +92,7 @@ public:
         _perInstance(false)
     {
         string const perAttributeParamHeader              = "per_attribute=";
-        string const perInstanceParamHeader              = "per_instance=";
+        string const perInstanceParamHeader               = "per_instance=";
         size_t const nParams = operatorParameters.size();
          if (nParams > MAX_PARAMETERS)
          {   //assert-like exception. Caller should have taken care of this!
@@ -148,7 +148,7 @@ private:
     }
     void parseStringParam(string const& param)
     {
-        if(checkBoolParam (param,   "per_attribute",       _perAttribute,          _perAttributeSet       ) ) { return; }
+        if(checkBoolParam (param,   "per_attribute",       _perAttribute,        _perAttributeSet       ) ) { return; }
         if(checkBoolParam (param,   "per_instance",       _perInstance,          _perInstanceSet       ) ) { return; }
         ostringstream error;
         error<<"unrecognized parameter "<<param;
