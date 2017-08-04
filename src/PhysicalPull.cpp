@@ -122,7 +122,7 @@ std::shared_ptr< Array> execute(std::vector< std::shared_ptr< Array> >& inputArr
 
     pull::InstanceSummary summary(query->getInstanceID(), numInputAtts, attNames);
 
-    std::vector<uint8_t> myVector;
+    std::vector<unsigned char> myVector;
     std::shared_ptr<MessageDesc> chunkMsg;
     for(AttributeID i=0; i<numInputAtts; ++i)
     {
@@ -144,12 +144,12 @@ std::shared_ptr< Array> execute(std::vector< std::shared_ptr< Array> >& inputArr
                 emptyBitmap = chunk.getEmptyBitmap();
             }
             //chunk.compress(*buffer, emptyBitmap);
-            uint32_t *dataptr = chunk.getConstData();
+            const void* dataptr = chunk.getConstData();
             uint32_t sourceSize = chunk.getSize();
             if(sourceSize > myVector.capacity()){
             myVector.reserve(sourceSize);
             }
-            std::copy(dataptr, dataptr + sourceSize, std::front_inserter(myVector));
+            std::copy((unsigned char*)dataptr, (unsigned char*)dataptr + sourceSize, myVector.begin());
             //emptyBitmap.reset(); // the bitmask must be cleared before the iterator is advanced (bug?)
             //chunkMsg = std::make_shared<MessageDesc>(mtRemoteChunk, buffer);
             //uint32_t foo = chunkMsg->getMessageSize();
