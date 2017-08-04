@@ -122,6 +122,8 @@ std::shared_ptr< Array> execute(std::vector< std::shared_ptr< Array> >& inputArr
 
     pull::InstanceSummary summary(query->getInstanceID(), numInputAtts, attNames);
 
+    std::vector<uint8_t> myVector;
+    std::shared_ptr<MessageDesc> chunkMsg;
     for(AttributeID i=0; i<numInputAtts; ++i)
     {
         size_t bytesWritten = 0;
@@ -132,12 +134,30 @@ std::shared_ptr< Array> execute(std::vector< std::shared_ptr< Array> >& inputArr
             auto t_start = std::chrono::high_resolution_clock::now();
             //ConstChunk const& chunk = iaiters[i]->getChunk();
             iciters[i] = iaiters[i]->getChunk().getConstIterator(ConstChunkIterator::IGNORE_OVERLAPS | ConstChunkIterator::IGNORE_EMPTY_CELLS);
-            ConstChunk const& ch = iciters[i]->getChunk();
-            PinBuffer pinScope(ch);
-            uint32_t sourceSize = ch.getSize();
-            //uint32_t* sizePointer = (uint32_t*) (((char*)ch.getData()) + MemChunkBuilder::chunkSizeOffset());
-            //uint32_t const sourceSize = *((uint32_t*)(((char*) ch.getData()) + getSizeOffset()));
+            ConstChunk const& chunk = iciters[i]->getChunk();
+            PinBuffer pinScope(chunk);
+
+            std::shared_ptr<CompressedBuffer> buffer = std::make_shared<CompressedBuffer>();
+            std::shared_ptr<ConstRLEEmptyBitmap> emptyBitmap;
+            if (inputArray->getArrayDesc().getEmptyBitmapAttribute() != NULL &&
+                !chunk.getAttributeDesc().isEmptyIndicator()) {
+                emptyBitmap = chunk.getEmptyBitmap();
+            }
+            //chunk.compress(*buffer, emptyBitmap);
+            uint32_t *dataptr = chunk.getConstData();
+            uint32_t sourceSize = chunk.getSize();
+            if(sourceSize > myVector.capacity()){
+            myVector.reserve(sourceSize);
+            }
+            std::copy(dataptr, dataptr + sourceSize, std::front_inserter(myVector));
+            //emptyBitmap.reset(); // the bitmask must be cleared before the iterator is advanced (bug?)
+            //chunkMsg = std::make_shared<MessageDesc>(mtRemoteChunk, buffer);
+            //uint32_t foo = chunkMsg->getMessageSize();
+
+            //chunkMsg->getBinary()
             bytesWritten += sourceSize;
+
+
             /*
             char *source = ch.getConstData();
 
