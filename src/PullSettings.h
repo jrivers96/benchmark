@@ -348,8 +348,7 @@ struct InstanceSummary
                     }
                 }
             }
-        }
-        else if (perIns && !perAtt) {
+        }else if (perIns && !perAtt) {
             std::vector<SummaryTuple>::size_type sz = summaryData.size();
             SummaryTuple instanceSummary("all");
             for (unsigned att = 0; att < sz; att++) {
@@ -375,7 +374,7 @@ struct InstanceSummary
             summaryData.clear();
             summaryData.push_back(instanceSummary);
         }
-                return true;
+        return true;
     }
 
     shared_ptr<Array> toArray(Settings const& settings,ArrayDesc const& schema, shared_ptr<Query>& query)

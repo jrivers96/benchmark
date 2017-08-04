@@ -136,9 +136,10 @@ std::shared_ptr< Array> execute(std::vector< std::shared_ptr< Array> >& inputArr
             uint32_t sourceSize = ch.getSize();
             //uint32_t* sizePointer = (uint32_t*) (((char*)ch.getData()) + MemChunkBuilder::chunkSizeOffset());
             //uint32_t const sourceSize = *((uint32_t*)(((char*) ch.getData()) + getSizeOffset()));
+            bytesWritten += sourceSize;
             /*
             char *source = ch.getConstData();
-            bytesWritten += sourceSize;
+
             char *dest;
             std::memcpy(dest, source, sizeof dest);
             */
