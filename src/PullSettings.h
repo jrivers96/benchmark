@@ -79,7 +79,7 @@ private:
     bool _perInstance;
 
 public:
-    static const size_t MAX_PARAMETERS = 3;
+    static const size_t MAX_PARAMETERS = 2;
     Settings(ArrayDesc const& inputSchema,
              vector< shared_ptr<OperatorParam> > const& operatorParameters,
              bool logical,
